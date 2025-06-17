@@ -92,6 +92,13 @@ guideline first, and refer to the individual [server](./python/README.md) and
                     <sub><b>Yiqin Zhao</b></sub>
                 </a>
             </td>
+            <td align="center">
+                <a href="https://github.com/vedantsaran">
+                    <img src="https://avatars.githubusercontent.com/u/108028028?v=4" width="100;" alt="vedantsaran"/>
+                    <br />
+                    <sub><b>vedantsaran</b></sub>
+                </a>
+            </td>
 		</tr>
 	<tbody>
 </table>
