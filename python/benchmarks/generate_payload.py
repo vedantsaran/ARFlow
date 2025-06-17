@@ -4,6 +4,7 @@
 
 import argparse
 import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -200,6 +201,40 @@ def main() -> None:
         ]
     else:
         raise ValueError(f"Invalid scenario: {args.scenario}")
+
+    # Add RGB format examples
+    rgb_image_data = XRCpuImage(
+        dimensions=Vector2Int(x=640, y=480),
+        format=XRCpuImage.FORMAT_RGB24,
+        timestamp=time.time(),
+        planes=[
+            XRCpuImage.Plane(
+                row_stride=640 * 3,  # 3 bytes per pixel for RGB
+                pixel_stride=3,
+                data=b"\x00" * (640 * 480 * 3),  # Dummy RGB data
+            )
+        ],
+    )
+
+    rgba_image_data = XRCpuImage(
+        dimensions=Vector2Int(x=640, y=480),
+        format=XRCpuImage.FORMAT_RGBA32,
+        timestamp=time.time(),
+        planes=[
+            XRCpuImage.Plane(
+                row_stride=640 * 4,  # 4 bytes per pixel for RGBA
+                pixel_stride=4,
+                data=b"\x00" * (640 * 480 * 4),  # Dummy RGBA data
+            )
+        ],
+    )
+
+    logger.info(
+        "RGB24 image data size: %d bytes", len(rgb_image_data.SerializeToString())
+    )
+    logger.info(
+        "RGBA32 image data size: %d bytes", len(rgba_image_data.SerializeToString())
+    )
 
     device = Device(
         model="iPhone 12",

@@ -383,6 +383,10 @@ namespace CakeLab.ARFlow.Grpc.V1 {
         ///&#x2F; Android
         /// </summary>
         [pbr::OriginalName("FORMAT_DEPTHUINT16")] Depthuint16 = 5,
+        [pbr::OriginalName("FORMAT_ARGB32")] Argb32 = 7,
+        [pbr::OriginalName("FORMAT_RGBA32")] Rgba32 = 8,
+        [pbr::OriginalName("FORMAT_BGRA32")] Bgra32 = 9,
+        [pbr::OriginalName("FORMAT_RGB24")] Rgb24 = 10,
       }
 
       /// <summary>

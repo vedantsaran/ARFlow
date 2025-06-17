@@ -146,12 +146,76 @@ class SessionStream:
                     pixel_format=rr.PixelFormat.Y_U_V12_LimitedRange,
                 )
                 data = np.array([_to_i420_format(f.image) for f in homogenous_frames])
-            # elif format == XRCpuImage.FORMAT_IOS_YP_CBCR_420_8BI_PLANAR_FULL_RANGE:
-            #     format_static = rr.components.ImageFormat(
-            #         width=width,
-            #         height=height,
-            #         pixel_format=rr.PixelFormat.NV12,
-            #     )
+            elif format == XRCpuImage.FORMAT_RGB24:
+                format_static = rr.components.ImageFormat(
+                    width=width,
+                    height=height,
+                    pixel_format=rr.PixelFormat.RGB,
+                )
+                # Assume each frame's image.planes[0].data is RGB packed
+                data = np.array(
+                    [
+                        np.frombuffer(f.image.planes[0].data, dtype=np.uint8).reshape(
+                            (height, width, 3)
+                        )
+                        for f in homogenous_frames
+                    ]
+                )
+            elif format == XRCpuImage.FORMAT_RGBA32:
+                format_static = rr.components.ImageFormat(
+                    width=width,
+                    height=height,
+                    pixel_format=rr.PixelFormat.RGBA,
+                )
+                data = np.array(
+                    [
+                        np.frombuffer(f.image.planes[0].data, dtype=np.uint8).reshape(
+                            (height, width, 4)
+                        )
+                        for f in homogenous_frames
+                    ]
+                )
+            elif format == XRCpuImage.FORMAT_BGRA32:
+                format_static = rr.components.ImageFormat(
+                    width=width,
+                    height=height,
+                    pixel_format=rr.PixelFormat.RGBA,
+                )
+                # Convert BGRA to RGBA for rerun
+                data = np.array(
+                    [
+                        _bgra_to_rgba(
+                            np.frombuffer(
+                                f.image.planes[0].data, dtype=np.uint8
+                            ).reshape((height, width, 4))
+                        )
+                        for f in homogenous_frames
+                    ]
+                )
+            elif format == XRCpuImage.FORMAT_ARGB32:
+                format_static = rr.components.ImageFormat(
+                    width=width,
+                    height=height,
+                    pixel_format=rr.PixelFormat.RGBA,
+                )
+                # Convert ARGB to RGBA for rerun
+                data = np.array(
+                    [
+                        _argb_to_rgba(
+                            np.frombuffer(
+                                f.image.planes[0].data, dtype=np.uint8
+                            ).reshape((height, width, 4))
+                        )
+                        for f in homogenous_frames
+                    ]
+                )
+            elif format == XRCpuImage.FORMAT_IOS_YP_CBCR_420_8BI_PLANAR_FULL_RANGE:
+                format_static = rr.components.ImageFormat(
+                    width=width,
+                    height=height,
+                    pixel_format=rr.PixelFormat.NV12,
+                )
+                data = np.array([f.image.planes[0].data for f in homogenous_frames])
             else:
                 logger.warning(f"Unsupported color frame format: {format}")
                 continue
@@ -896,3 +960,36 @@ def _convert_2d_to_3d_boundary_points(
         dtype=np.float32,
     )
     return boundary_points_3d
+
+
+def _yuv420_to_rgb_cv2(image: XRCpuImage) -> npt.NDArray[np.uint8]:
+    try:
+        import cv2
+    except ImportError:
+        logger.warning("OpenCV (cv2) is not installed. Cannot convert YUV to RGB.")
+        return np.zeros((image.dimensions.y, image.dimensions.x, 3), dtype=np.uint8)
+    height = image.dimensions.y
+    width = image.dimensions.x
+    yuv = _to_i420_format(image)
+    yuv = yuv.reshape((height * 3) // 2, width)
+    rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2RGB_I420)
+    return rgb
+
+
+def _bgra_to_rgba(bgra_image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+    """Convert BGRA image to RGBA format."""
+    # BGRA -> RGBA: swap B and R channels
+    rgba_image = bgra_image.copy()
+    rgba_image[:, :, [0, 2]] = rgba_image[:, :, [2, 0]]  # Swap R and B
+    return rgba_image
+
+
+def _argb_to_rgba(argb_image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
+    """Convert ARGB image to RGBA format."""
+    # ARGB -> RGBA: move alpha channel from first to last position
+    rgba_image = np.zeros_like(argb_image)
+    rgba_image[:, :, 0] = argb_image[:, :, 1]  # R
+    rgba_image[:, :, 1] = argb_image[:, :, 2]  # G
+    rgba_image[:, :, 2] = argb_image[:, :, 3]  # B
+    rgba_image[:, :, 3] = argb_image[:, :, 0]  # A
+    return rgba_image

@@ -24,6 +24,7 @@ grpcio = "^1.60.1"
 grpcio-tools = "^1.60.1"
 grpc-interceptor = "^0.15.4"
 dracopy = "^1.4.0"
+opencv-python = { version = "^4.8.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.4"             # Sync with `.github/ci.yml` if changed
@@ -83,3 +84,6 @@ exclude = [
 [tool.pytest.ini_options]
 # coverage report for only `arflow` package with missing lines with 5 slowest tests
 addopts = "-vv --durations 5 --cov arflow --cov-report term-missing --cov-fail-under=100"
+
+[tool.poetry.extras]
+opencv = ["opencv-python"]
