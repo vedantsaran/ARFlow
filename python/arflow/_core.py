@@ -67,6 +67,8 @@ class ARFlowServicer(arflow_service_pb2_grpc.ARFlowServiceServicer):
         spawn_viewer: bool = True,
         save_dir: Path | None = None,
         application_id: str = "arflow",
+        enable_compression: bool = False,
+        compression_quality: str = "medium",
     ) -> None:
         """Initialize the ARFlowServicer.
 
@@ -74,6 +76,8 @@ class ARFlowServicer(arflow_service_pb2_grpc.ARFlowServiceServicer):
             spawn_viewer: Whether to spawn the Rerun Viewer in another process.
             save_dir: The path to save the data to. Assumed to be an existing directory.
             application_id: The application ID to store recordings under.
+            enable_compression: Enable video compression for RGB streams.
+            compression_quality: Compression quality ("low", "medium", "high").
 
         Raises:
             ValueError: If neither or both operational modes are selected.
@@ -87,6 +91,8 @@ class ARFlowServicer(arflow_service_pb2_grpc.ARFlowServiceServicer):
         self.spawn_viewer = spawn_viewer
         self.save_dir = save_dir
         self.application_id = application_id
+        self.enable_compression = enable_compression
+        self.compression_quality = compression_quality
         self.client_sessions: dict[str, SessionStream] = {}
         """Active session streams, indexed by their ID."""
         # Initializes SDK with an "empty" global recording. We don't want to log anything into the global recording.
@@ -118,6 +124,8 @@ class ARFlowServicer(arflow_service_pb2_grpc.ARFlowServiceServicer):
         new_session_stream = SessionStream(
             info=new_session,
             stream=new_rr_stream,
+            enable_compression=self.enable_compression,
+            compression_quality=self.compression_quality,
         )
         self.client_sessions[new_session_id] = new_session_stream
         logger.info("Created new session: %s", new_session_stream.info)
@@ -705,6 +713,8 @@ def run_server(  # pragma: no cover
     save_dir: Path | None = None,
     application_id: str = "arflow",
     port: int = 8500,
+    enable_compression: bool = False,
+    compression_quality: str = "medium",
 ) -> None:
     """Run gRPC server.
 
@@ -722,6 +732,8 @@ def run_server(  # pragma: no cover
             spawn_viewer=spawn_viewer,
             save_dir=save_dir,
             application_id=application_id,
+            enable_compression=enable_compression,
+            compression_quality=compression_quality,
         )
     except ValueError as e:
         raise e

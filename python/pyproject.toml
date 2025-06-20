@@ -87,3 +87,5 @@ addopts = "-vv --durations 5 --cov arflow --cov-report term-missing --cov-fail-u
 
 [tool.poetry.extras]
 opencv = ["opencv-python"]
+compression = ["opencv-python"]
+all = ["opencv-python"]

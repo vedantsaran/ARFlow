@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Sequence
+from typing import Optional
 
 import DracoPy
 import numpy as np
@@ -33,6 +34,16 @@ from cakelab.arflow_grpc.v1.vector2_pb2 import Vector2
 from cakelab.arflow_grpc.v1.vector3_pb2 import Vector3
 from cakelab.arflow_grpc.v1.xr_cpu_image_pb2 import XRCpuImage
 
+# Import compression module with fallback
+try:
+    from arflow._compression import FFmpegVideoCompressor, create_compressor_for_format
+
+    COMPRESSION_AVAILABLE = True
+except ImportError:
+    FFmpegVideoCompressor = None
+    create_compressor_for_format = None
+    COMPRESSION_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 y_down_to_y_up = np.array(
     [
@@ -48,11 +59,38 @@ y_down_to_y_up = np.array(
 class SessionStream:
     """All devices in a session share a stream."""
 
-    def __init__(self, info: Session, stream: rr.RecordingStream):
+    def __init__(
+        self,
+        info: Session,
+        stream: rr.RecordingStream,
+        enable_compression: bool = False,
+        compression_quality: str = "medium",
+    ):
         self.info = info
         """Session information."""
         self.stream = stream
         """Stream handle to the Rerun recording associated with this session."""
+
+        # Video compression settings
+        self.enable_compression = enable_compression and COMPRESSION_AVAILABLE
+        self.compression_quality = compression_quality
+        self._compressors = {}  # Cache compressors by resolution
+        self._frame_buffers = {}  # Buffer frames for batch compression
+        self._compression_batch_size = (
+            30  # Compress every 30 frames (1 second at 30fps)
+        )
+
+        if self.enable_compression:
+            if not COMPRESSION_AVAILABLE:
+                logger.warning(
+                    "Compression requested but not available - FFmpeg or OpenCV missing"
+                )
+            else:
+                logger.info(
+                    "RGB compression enabled with quality: %s", compression_quality
+                )
+        else:
+            logger.info("RGB compression disabled")
 
     def save_transform_frames(
         self,
@@ -139,6 +177,20 @@ class SessionStream:
                 ]
             )
 
+            # Check if compression is enabled for RGB formats
+            should_compress = (
+                self.enable_compression
+                and format
+                in [
+                    XRCpuImage.FORMAT_RGB24,
+                    XRCpuImage.FORMAT_RGBA32,
+                    XRCpuImage.FORMAT_BGRA32,
+                    XRCpuImage.FORMAT_ARGB32,
+                ]
+                and len(homogenous_frames)
+                > 1  # Only compress if we have multiple frames
+            )
+
             if format == XRCpuImage.FORMAT_ANDROID_YUV_420_888:
                 format_static = rr.components.ImageFormat(
                     width=width,
@@ -153,14 +205,31 @@ class SessionStream:
                     pixel_format=rr.PixelFormat.RGB,
                 )
                 # Assume each frame's image.planes[0].data is RGB packed
-                data = np.array(
-                    [
-                        np.frombuffer(f.image.planes[0].data, dtype=np.uint8).reshape(
-                            (height, width, 3)
+                raw_frames = [
+                    np.frombuffer(f.image.planes[0].data, dtype=np.uint8).reshape(
+                        (height, width, 3)
+                    )
+                    for f in homogenous_frames
+                ]
+
+                # Apply compression if enabled
+                if should_compress:
+                    compressed_data = self._compress_rgb_frames(
+                        raw_frames,
+                        width,
+                        height,
+                        f"{self.info.id.value}",
+                        f"{device.uid}",
+                    )
+                    if compressed_data:
+                        # Store compressed data for potential transmission
+                        logger.info(
+                            "RGB24 frames compressed: %d frames -> %d bytes",
+                            len(raw_frames),
+                            len(compressed_data),
                         )
-                        for f in homogenous_frames
-                    ]
-                )
+
+                data = np.array(raw_frames)
             elif format == XRCpuImage.FORMAT_RGBA32:
                 format_static = rr.components.ImageFormat(
                     width=width,
@@ -291,6 +360,44 @@ class SessionStream:
                 ],
                 recording=self.stream.to_native(),  # pyright: ignore [reportUnknownMemberType, reportUnknownArgumentType]
             )
+
+    def _compress_rgb_frames(
+        self,
+        frames: list,
+        width: int,
+        height: int,
+        session_id: str,
+        device_id: str,
+    ) -> Optional[bytes]:
+        """Compress RGB frames using FFmpeg if available.
+
+        Args:
+            frames: List of RGB frame arrays
+            width: Frame width
+            height: Frame height
+            session_id: Session identifier
+            device_id: Device identifier
+
+        Returns:
+            Compressed video data as bytes or None if compression failed
+        """
+        if not self.enable_compression or not COMPRESSION_AVAILABLE:
+            return None
+
+        # Get or create compressor for this resolution
+        compressor_key = f"{width}x{height}"
+        if compressor_key not in self._compressors:
+            self._compressors[compressor_key] = create_compressor_for_format(
+                width, height, self.compression_quality
+            )
+
+        compressor = self._compressors[compressor_key]
+
+        try:
+            return compressor.compress_frame_sequence(frames, session_id, device_id)
+        except Exception as e:
+            logger.error("RGB compression failed: %s", e)
+            return None
 
     def save_depth_frames(
         self,

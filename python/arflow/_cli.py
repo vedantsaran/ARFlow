@@ -47,6 +47,8 @@ def view(args: Any):
         save_dir=None,
         application_id=args.application_id,
         port=args.port,
+        enable_compression=args.enable_compression,
+        compression_quality=args.compression_quality,
     )
 
 
@@ -58,6 +60,8 @@ def save(args: Any):
         save_dir=Path(args.save_dir),
         application_id=args.application_id,
         port=args.port,
+        enable_compression=args.enable_compression,
+        compression_quality=args.compression_quality,
     )
 
 
@@ -110,6 +114,18 @@ def parse_args(
         default="arflow",
         help=f"Application ID to use for the Rerun recording (default: %(default)s).",
     )
+    view_parser.add_argument(
+        "--enable-compression",
+        action="store_true",
+        help="Enable video compression for RGB streams to reduce bandwidth usage.",
+    )
+    view_parser.add_argument(
+        "--compression-quality",
+        type=str,
+        choices=["low", "medium", "high"],
+        default="medium",
+        help="Compression quality setting (default: %(default)s). Higher quality uses more CPU but provides better visual fidelity.",
+    )
     view_parser.set_defaults(func=view)
 
     # Save subcommand
@@ -136,6 +152,18 @@ def parse_args(
         type=str,
         default="arflow",
         help=f"Application ID to use for the Rerun recording (default: %(default)s).",
+    )
+    save_parser.add_argument(
+        "--enable-compression",
+        action="store_true",
+        help="Enable video compression for RGB streams to reduce bandwidth usage and file size.",
+    )
+    save_parser.add_argument(
+        "--compression-quality",
+        type=str,
+        choices=["low", "medium", "high"],
+        default="medium",
+        help="Compression quality setting (default: %(default)s). Higher quality uses more CPU but provides better visual fidelity.",
     )
     save_parser.set_defaults(func=save)
 
