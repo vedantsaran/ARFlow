@@ -32,23 +32,23 @@ RGB Frames → Batch Buffer → PNG Sequence → FFmpeg H.264 → Compressed Vid
 
 ## Key Features
 
-### 🎯 **Automatic Batching**
+###  **Automatic Batching**
 - Groups frames into 30-frame batches (1 second at 30fps)
 - Enables temporal compression for moving objects
 - Optimizes compression efficiency
 
-### ⚡ **Quality Presets**
+### **Quality Presets**
 - **Low**: 1 Mbps bitrate, ultrafast preset → ~70-80% compression
 - **Medium**: 2 Mbps bitrate, fast preset → ~60-70% compression  
 - **High**: 4 Mbps bitrate, medium preset → ~50-60% compression
 
-### 🔧 **Smart Integration**
+###  **Smart Integration**
 - Only compresses RGB formats (RGB24, RGBA32, BGRA32, ARGB32)
 - Graceful fallback when FFmpeg unavailable
 - Thread-safe session management
 - Automatic cleanup of temporary files
 
-### 📊 **Performance Monitoring**
+###  **Performance Monitoring**
 - Compression ratio tracking
 - Bandwidth savings calculation
 - Real-time processing statistics
