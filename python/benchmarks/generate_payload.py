@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 # ruff:noqa: D100, D101, D103
+# pyright: reportUnknownMemberType=false
 
 import argparse
 import os
 from pathlib import Path
 
-import numpy as np
+import numpy as np  # type: ignore
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.timestamp_pb2 import Timestamp
 
@@ -59,7 +60,7 @@ def main() -> None:
                 ARFrame(
                     transform_frame=TransformFrame(
                         device_timestamp=Timestamp(seconds=i, nanos=0),
-                        data=np.random.rand(12).astype(np.float32).tobytes(),
+                        data=np.random.rand(12).astype(np.float32).tobytes(),  # type: ignore
                     ),
                 )
                 for i in range(args.frames_per_request)
@@ -148,7 +149,7 @@ def main() -> None:
                 ARFrame(
                     transform_frame=TransformFrame(
                         device_timestamp=Timestamp(seconds=i, nanos=0),
-                        data=np.random.rand(12).astype(np.float32).tobytes(),
+                        data=np.random.rand(12).astype(np.float32).tobytes(),  # type: ignore
                     ),
                 )
                 for i in range(args.frames_per_request)
